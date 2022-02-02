@@ -1,7 +1,6 @@
 {
   "name": "ryssbowh/scss-php-compiler",
   "description": "Php Scss compiler. Plugins, aliases, asset extraction",
-  "version": "1.0",
   "autoload": {
     "psr-4": {
       "Ryssbowh\\ScssPhp\\": "src/",
