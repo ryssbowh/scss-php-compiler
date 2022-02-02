@@ -1,0 +1,4 @@
+/vendor
+/*.cache
+/tests/scss/node_modules
+/composer.lock

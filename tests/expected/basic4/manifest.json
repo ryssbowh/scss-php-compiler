@@ -1,0 +1,8 @@
+{
+    "assets/unit.jpg?foo=2": "assets/unit.jpg",
+    "assets/unit.jpeg#fragment": "assets/unit.jpeg",
+    "assets/unit.ico": "assets/unit.ico",
+    "assets/unit.png?#queryAndFragment": "assets/unit.png",
+    "app.css": "app.css",
+    "app.css.map": "app.css.map"
+}

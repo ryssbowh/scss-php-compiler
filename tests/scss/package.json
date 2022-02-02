@@ -1,0 +1,10 @@
+{
+  "name": "tests",
+  "version": "1.0.0",
+  "description": "",
+  "author": "The Web Puzzlers",
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.15.4",
+    "bootstrap": "^5.1.3"
+  }
+}
