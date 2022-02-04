@@ -40,4 +40,12 @@ class ImportsTest extends BaseTest
         $this->assertFileEquals($this->getPublicFolder('imports4/app.css'), $this->getExpectedFile('imports4/app.css'));
         $this->assertFileEquals($this->getPublicFolder('imports4/manifest.json'), $this->getExpectedFile('imports4/manifest.json'));
     }
+
+    public function testFakeSourceImport()
+    {
+        $compiler = $this->createCompiler();
+        $compiler->compile([$this->getSrcFolder('faked/app.scss') => 'imports5/app.css'], $this->getSrcFolder(), $this->getSrcFolder('imports5/template.twig'));
+        $this->assertFileEquals($this->getPublicFolder('basic5/app.css'), $this->getExpectedFile('basic5/app.css'));
+        $this->assertFileEquals($this->getPublicFolder('basic5/manifest.json'), $this->getExpectedFile('basic5/manifest.json'));
+    }
 }

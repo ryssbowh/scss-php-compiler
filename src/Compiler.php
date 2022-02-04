@@ -87,6 +87,13 @@ class Compiler extends BaseObject
     public $importPaths = [];
 
     /**
+     * @var array as defined by ScssPhp\ScssPhp\SourceMap\SourceMapGenerator::defaultOptions
+     */
+    public $sourcemapOptions = [
+        'sourceMapRootpath' => '/',
+    ];
+
+    /**
      * @var ScssCompiler Underlying Scss compiler
      * @see https://github.com/scssphp/scssphp
      */
@@ -101,11 +108,6 @@ class Compiler extends BaseObject
      * @var string Relative destination folder
      */
     protected $relativeDestFolder;
-
-    /**
-     * @var string Absolute destination folder
-     */
-    protected $destFolder;
 
     /**
      * @var string Absolute destination file
@@ -215,9 +217,10 @@ class Compiler extends BaseObject
      * 
      * @param  array  $files
      * @param  string $srcFolder
+     * @param  string $srcFile override the source file to resolve import. This is used when the scss imports scss or assets that are in a different folder altogether
      * @return Compiler
      */
-    public function compile(array $files, string $srcFolder): self
+    public function compile(array $files, string $srcFolder, ?string $srcFile = null): self
     {
         $this->checkOptions();
         foreach ($this->plugins as $plugin) {
@@ -226,8 +229,12 @@ class Compiler extends BaseObject
         $this->trigger('beforeCompile', [$files]);
         $this->srcFolder = rtrim($srcFolder, DIRECTORY_SEPARATOR);
         foreach ($files as $src => $dest) {
-            $srcFile = $srcFolder . DIRECTORY_SEPARATOR . $src;
-            $this->_compile($srcFile, $dest);
+            if (!$this->fs->isAbsolutePath($src)) {
+                $src = $srcFolder . DIRECTORY_SEPARATOR . $src; 
+            }
+            $this->srcFile = $srcFile ?? $src;
+            $this->destFile = $this->publicFolder . DIRECTORY_SEPARATOR . $dest;
+            $this->_compile($src, $dest);
         }
         $this->writeAssets();
         $this->trigger('afterCompile', [$files]);
@@ -281,7 +288,7 @@ class Compiler extends BaseObject
      */
     public function getDestFolder(): string
     {
-        return $this->destFolder;
+        return dirname($this->destFile);
     }
 
     /**
@@ -295,13 +302,13 @@ class Compiler extends BaseObject
     }
 
     /**
-     * Get the current destination file, relative to the public folder
+     * Get the destination file, relative to the public folder
      * 
      * @return string
      */
     public function getRelativeDestFile(): string
     {
-        return S::replaceBeginning($this->destFile, $this->destFolder . DIRECTORY_SEPARATOR, '');
+        return S::replaceBeginning($this->destFile, $this->getDestFolder() . DIRECTORY_SEPARATOR, '');
     }
 
     /**
@@ -311,7 +318,7 @@ class Compiler extends BaseObject
      */
     public function getRelativeDestFolder(): string
     {
-        $folder = S::replaceBeginning($this->destFolder, $this->publicFolder, '');
+        $folder = S::replaceBeginning($this->getDestFolder(), $this->publicFolder, '');
         return rtrim($folder, DIRECTORY_SEPARATOR);
     }
 
@@ -348,7 +355,7 @@ class Compiler extends BaseObject
     {
         $file = $this->getCurrentFile();
         if (!$file) {
-            return $this->srcFolder;
+            return $this->getSrcFolder();
         }
         return dirname($file);
     }
@@ -360,7 +367,7 @@ class Compiler extends BaseObject
      */
     public function getRelativeCurrentFolder(): string
     {
-        return S::replaceBeginning($this->getCurrentFolder(), $this->srcFolder . DIRECTORY_SEPARATOR, '');
+        return S::replaceBeginning($this->getCurrentFolder(), $this->getSrcFolder() . DIRECTORY_SEPARATOR, '');
     }
 
     /**
@@ -513,28 +520,20 @@ class Compiler extends BaseObject
     /**
      * Compile a file
      * 
-     * @param  string $srcFile
-     * @param  string $relativeDestFile
+     * @param  string $scssFile
      */
-    protected function _compile(string $srcFile, string $relativeDestFile)
+    protected function _compile(string $scssFile)
     {
-        if (!$this->fs->exists($srcFile)) {
-            throw NotFoundException::source($srcFile);
+        if (!$this->fs->exists($scssFile)) {
+            throw NotFoundException::source($scssFile);
         }
-        $this->srcFile = $srcFile;
-        $this->destFile = $this->publicFolder . DIRECTORY_SEPARATOR . $relativeDestFile;
-        $this->destFolder = dirname($this->destFile);
         if ($this->cleanDestination) {
-            $this->cleanFolder($this->destFolder);
+            $this->cleanFolder($this->getDestFolder());
         }
         $compiler = $this->getCompiler();
-        $sourcemapOptions = [
-            'sourceMapRootpath' => '/',
-        ];
-        $compiler->setSourceMapOptions($sourcemapOptions);
         $scss = new ScssSource([
-            'scss' => file_get_contents($srcFile),
-            'file' => $srcFile
+            'scss' => file_get_contents($scssFile),
+            'file' => $scssFile
         ]);
         $this->trigger('beforeCompileFile', [$scss]);
         $results = $compiler->compileString($scss->scss, $this->srcFile);
@@ -563,6 +562,11 @@ class Compiler extends BaseObject
         $this->trigger('afterCompileFile', [$scss, $results]);
     }
 
+    /**
+     * Parse css and extract assets
+     * 
+     * @param CompilationResults $results
+     */
     protected function extractAssets(CompilationResults $results)
     {
         $this->trigger('beforeExtractAssets', [$results]);
@@ -651,6 +655,7 @@ class Compiler extends BaseObject
             $this->fs->mkdir($this->cacheFolder);
         }
         $compiler = new ScssCompiler($cacheOptions);
+        $compiler->setSourceMapOptions($this->sourcemapOptions);
         $compiler->setSourceMap(ScssCompiler::SOURCE_MAP_FILE);
         if ($this->logger) {
             $compiler->setLogger($this->logger);
@@ -694,7 +699,7 @@ class Compiler extends BaseObject
             if (S::startsWith($path, $prefix)) {
                 $relativePath = S::replaceBeginning($path, $prefix, '');
                 //Try source folder first
-                $fullPath = realpath($this->srcFolder . DIRECTORY_SEPARATOR . $subFolder . DIRECTORY_SEPARATOR . $relativePath);
+                $fullPath = realpath($this->getSrcFolder() . DIRECTORY_SEPARATOR . $subFolder . DIRECTORY_SEPARATOR . $relativePath);
                 if ($fullPath) {
                     return $fullPath;
                 }

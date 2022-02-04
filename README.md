@@ -24,14 +24,17 @@ $compiler = new Compiler([
     'publicFolder' => '/absolute/path/to/public/folder'
 ]);
 $compiler->compile([
-    'relative/path/to/srcFile1.scss' => 'relative/path/to/cssFile1.css',
-    'relative/path/to/srcFile2.scss' => 'relative/path/to/cssFile2.css',
-], '/absolute/path/to/src/folder');
+    'relative/or/absolute/path/to/srcFile1.scss' => 'relative/path/to/cssFile1.css',
+    'relative/or/absolute/path/to/srcFile2.scss' => 'relative/path/to/cssFile2.css',
+], '/absolute/path/to/src/folder', null);
 ```
-First argument of `compile` is an array index by the relative path (to the source folder) of the scss files, the values are relative paths (to the public folder) of css files.  
-Second argument is the source folder, where all imports will be resolved from.
+First argument of `compile` is an array index by the relative path (to the source folder) of the scss files, the values are relative paths (to the public folder) or absolute paths of css files. If you give relative paths, the absolute path will be built using the second argument.
 
-The default options for the compiler :
+Second argument is the source folder, where all imports will be considered from.
+
+Third argument is to "fake" the source file (see below)
+
+Default options for the compiler :
 
 ```
 [
@@ -51,6 +54,50 @@ The default options for the compiler :
 ```
 
 This example won't extract assets so unless your assets paths match in the scss, chances are they will not resolve. It won't write a manifest either. For that you need plugins.
+
+### Faking the source folder
+
+In some (probably rare) cases you may want to compile a scss file situated in a folder as if it was in another folder, in this example we want the compiler to consider that `folder1/src.scss` as if it was in the `folder2/templates` folder :
+
+```
+- folder1
+    - src.scss
+- folder2
+    - assets
+        - img.jpg
+    - templates
+        - file.twig
+```
+```
+//src.scss
+a {
+    background('../assets/img.jpg')
+}
+```
+
+If you were using the example above to compile, the assets wouldn't be found, as they are in a different folder. Compiling with this :
+
+```
+$compiler = new Compiler([
+    'publicFolder' => '/public'
+]);
+$compiler->compile([
+    '/folder1/src.scss' => 'dest.css', //Note the (required) absolute path here
+], '/folder2', '/folder2/templates/file.twig');
+```
+will resolve your imports and asset urls nicely, giving this results (assuming you have a plugin that extracts the .jpg files) :
+```
+- public
+    - assets
+        - img.jpg
+    - dest.css
+```
+```
+//dest.css
+a {
+    background('assets/img.jpg')
+}
+```
 
 ## Aliases
 
