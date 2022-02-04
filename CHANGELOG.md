@@ -1,6 +1,6 @@
 # PHP Scss Changelog
 
-## 0.1.2
+## 0.1.2 - 2022-02-04
 
 - Added faking source file feature
 
